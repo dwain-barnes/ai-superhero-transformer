@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superhero Transformer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom, #ffffff, #f2f6ff);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 900px;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #48c6ef, #6f86d6);
+            color: white;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 10px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(72, 198, 239, 0.3);
+        }
+
+        .preview, .image-card img {
+            border-radius: 12px;
+            width: 100%;
+            height: 400px;
+            object-fit: contain;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .glass-card img {
+            flex-grow: 1;
+            object-fit: contain;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .text-primary {
+            color: #6f86d6;
+        }
+
+        .camera-container {
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .camera-container video {
+            flex-grow: 1;
+            object-fit: contain;
+            border-radius: 12px;
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+
+        canvas {
+            display: none;
+        }
+
+        /* Progress bar styles */
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+
+        /* Loading spinner animation */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Progress container styles */
+        .progress-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">
+                <span class="text-primary">Superhero Transformer</span>
+            </h1>
+            <p class="text-gray-500">Turn your photo into an epic superhero using AI magic!</p>
+        </div>
+
+        <!-- Input Buttons -->
+        <div class="flex justify-center gap-4 mb-8">
+            <button id="cameraBtn" class="btn">
+                <i class="fas fa-camera mr-2"></i> Use Camera
+            </button>
+            <label class="btn cursor-pointer">
+                <i class="fas fa-upload mr-2"></i> Upload Image
+                <input type="file" id="fileInput" class="hidden" accept="image/*">
+            </label>
+        </div>
+
+        <!-- Camera Section -->
+        <div class="glass-card hidden" id="cameraContainer">
+            <canvas id="canvas"></canvas>
+            <div class="camera-container">
+                <video id="video" autoplay playsinline></video>
+                <button id="captureBtn" class="btn mt-4">
+                    <i class="fas fa-camera mr-2"></i> Capture Photo
+                </button>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="glass-card hidden" id="previewContainer">
+            <img id="previewImage" alt="Preview" class="preview">
+            <button class="btn mt-4" id="transformBtn">
+                <i class="fas fa-magic mr-2"></i> Transform to Superhero
+            </button>
+        </div>
+
+        <!-- Progress Section -->
+        <div class="progress-container hidden" id="loadingContainer">
+            <div class="flex flex-col items-center justify-center space-y-4">
+                <!-- Loading Spinner -->
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                <!-- Simple Loading Text -->
+                <div class="text-lg font-semibold text-gray-700">
+                    Transforming...
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Area -->
+        <div class="hidden mt-8" id="resultsContainer">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Original Image -->
+                <div class="glass-card text-center">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-700">Original Image</h3>
+                    <img id="originalImage" alt="Original" class="preview">
+                </div>
+                <!-- Superhero Image -->
+                <div class="glass-card text-center">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-700">Superhero Image</h3>
+                    <img id="superheroImage" alt="Superhero" class="preview">
+                    <button class="btn mt-4" id="downloadBtn">
+                        <i class="fas fa-download mr-2"></i> Download Image
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const cameraBtn = document.getElementById('cameraBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const previewContainer = document.getElementById('previewContainer');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const previewImage = document.getElementById('previewImage');
+        const transformBtn = document.getElementById('transformBtn');
+        const loadingContainer = document.getElementById('loadingContainer');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const originalImage = document.getElementById('originalImage');
+        const superheroImage = document.getElementById('superheroImage');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let cameraStream = null;
+
+        // No longer need the updateProgress function since we're just showing the spinner
+
+        // Handle Camera Button
+        cameraBtn.addEventListener('click', async () => {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = cameraStream;
+                video.play();
+                cameraContainer.classList.remove('hidden');
+                previewContainer.classList.add('hidden');
+                resultsContainer.classList.add('hidden');
+                loadingContainer.classList.add('hidden');
+            } catch (err) {
+                alert('Unable to access camera: ' + err.message);
+            }
+        });
+
+        // Handle Capture Button
+        captureBtn.addEventListener('click', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            previewImage.src = dataUrl;
+            originalImage.src = dataUrl;
+
+            previewContainer.classList.remove('hidden');
+            cameraContainer.classList.add('hidden');
+
+            if (cameraStream) {
+                cameraStream.getTracks().forEach((track) => track.stop());
+            }
+        });
+
+        // Handle File Upload
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    previewImage.src = event.target.result;
+                    originalImage.src = event.target.result;
+                    previewContainer.classList.remove('hidden');
+                    cameraContainer.classList.add('hidden');
+                    resultsContainer.classList.add('hidden');
+                    loadingContainer.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Handle Transform Button
+        transformBtn.addEventListener('click', async () => {
+            // Hide preview and results, show loading
+            previewContainer.classList.add('hidden');
+            resultsContainer.classList.add('hidden');
+            loadingContainer.classList.remove('hidden');
+            
+            try {
+                // Create FormData and append the image
+                const formData = new FormData();
+                const response = await fetch(previewImage.src);
+                const blob = await response.blob();
+                formData.append('image', blob, 'image.jpg');
+
+                // Start the processing request
+                const apiResponse = await fetch('/process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await apiResponse.json();
+                
+                if (!apiResponse.ok) {
+                    throw new Error(result.error || 'Failed to process image');
+                }
+
+                // Start listening for status updates
+                const eventSource = new EventSource(`/status/${result.session_id}`);
+                
+                eventSource.onmessage = (event) => {
+                    const status = JSON.parse(event.data);
+                    
+                    if (status.complete) {
+                        eventSource.close();
+                        
+                        if (status.status === 'Error') {
+                            throw new Error(status.detail);
+                        } else {
+                            // Show the result
+                            superheroImage.src = `data:image/jpeg;base64,${result.generated_image}`;
+                            loadingContainer.classList.add('hidden');
+                            resultsContainer.classList.remove('hidden');
+                            window.scrollTo({
+                                top: resultsContainer.offsetTop,
+                                behavior: 'smooth'
+                            });
+                        }
+                    }
+                };
+
+                eventSource.onerror = () => {
+                    eventSource.close();
+                    throw new Error('Lost connection to server');
+                };
+                
+            } catch (error) {
+                console.error('Error:', error);
+                updateProgress('Error', 0, error.message);
+                alert('An error occurred while processing the image: ' + error.message);
+                loadingContainer.classList.add('hidden');
+            }
+        });
+
+        // Handle Download Button
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.href = superheroImage.src;
+            link.download = 'superhero.jpg';
+            link.click();
+        });
+    </script>
+</body>
+</html>
